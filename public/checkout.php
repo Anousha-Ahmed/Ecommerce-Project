@@ -4,10 +4,8 @@ require_once __DIR__ . '/../core/Session.php';
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Auth.php';
 
-
 // Start session.
 Session::start();
-
 
 // ======================================================
 // AUTHENTICATION
@@ -15,10 +13,8 @@ Session::start();
 
 $auth = new Auth();
 
-
 // Customer must be logged in.
 if (!$auth->isLoggedIn()) {
-
     Session::flash(
         'error',
         'Please login before checkout.'
@@ -28,14 +24,12 @@ if (!$auth->isLoggedIn()) {
     exit;
 }
 
-
 // ======================================================
 // DATABASE
 // ======================================================
 
 $database = new Database();
 $mysqli = $database->getConnection();
-
 
 // ======================================================
 // CHECK CART
@@ -45,7 +39,6 @@ if (
     !isset($_SESSION['cart']) ||
     empty($_SESSION['cart'])
 ) {
-
     Session::flash(
         'error',
         'Your cart is empty.'
@@ -55,16 +48,13 @@ if (
     exit;
 }
 
-
 $error = '';
-
 
 // ======================================================
 // CHECKOUT FORM
 // ======================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     // Get shipping address.
     $shippingAddress =
         trim($_POST['shipping_address'] ?? '');
@@ -73,15 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paymentMethod =
         $_POST['payment_method'] ?? '';
 
-
     // ----------------------------------------------
     // VALIDATION
     // ----------------------------------------------
 
     if ($shippingAddress === '') {
-
         $error = 'Shipping address is required.';
-
     } elseif (
         !in_array(
             $paymentMethod,
@@ -89,19 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             true
         )
     ) {
-
         $error = 'Invalid payment method.';
     }
-
 
     // ==================================================
     // CREATE ORDER
     // ==================================================
 
     if ($error === '') {
-
         try {
-
             /*
              * START TRANSACTION
              *
@@ -110,29 +93,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              */
             $mysqli->begin_transaction();
 
-
             $cartItems = [];
 
             $totalAmount = 0;
-
 
             // ==========================================
             // CHECK PRODUCTS + STOCK
             // ==========================================
 
             foreach ($_SESSION['cart'] as $productId => $quantity) {
-
                 $productId = (int) $productId;
                 $quantity = (int) $quantity;
 
-
                 if ($productId <= 0 || $quantity <= 0) {
-
                     throw new Exception(
                         'Invalid cart item.'
                     );
                 }
-
 
                 /*
                  * FOR UPDATE locks the selected product row
@@ -142,14 +119,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  * from incorrectly using the same stock.
                  */
                 $stmt = $mysqli->prepare(
-                    "SELECT id, name, price, stock
+                    'SELECT id, name, price, stock
                      FROM products
                      WHERE id = ? AND status = 1
-                     FOR UPDATE"
+                     FOR UPDATE'
                 );
 
                 $stmt->bind_param(
-                    "i",
+                    'i',
                     $productId
                 );
 
@@ -157,9 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $result = $stmt->get_result();
 
-
                 if ($result->num_rows !== 1) {
-
                     $stmt->close();
 
                     throw new Exception(
@@ -167,33 +142,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-
                 $product = $result->fetch_assoc();
 
                 $stmt->close();
 
-
                 // Check available stock.
                 if (
-                    (int) $product['stock']
-                    < $quantity
+                    (int) $product['stock'] <
+                    $quantity
                 ) {
-
                     throw new Exception(
                         'Not enough stock for: '
                         . $product['name']
                     );
                 }
 
-
                 // Calculate item subtotal.
                 $subtotal =
                     (float) $product['price']
                     * $quantity;
 
-
                 $totalAmount += $subtotal;
-
 
                 // Store validated item for later insertion.
                 $cartItems[] = [
@@ -203,7 +172,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'subtotal' => $subtotal
                 ];
             }
-
 
             // ==========================================
             // GENERATE ORDER NUMBER
@@ -215,10 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . '-'
                 . random_int(100, 999);
 
-
             // Current logged-in user's ID.
             $userId = $auth->userId();
-
 
             // ==========================================
             // INSERT ORDER
@@ -238,9 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, 'pending', 'processing', ?)"
             );
 
-
             $stmt->bind_param(
-                "isdss",
+                'isdss',
                 $userId,
                 $orderNumber,
                 $totalAmount,
@@ -248,9 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $shippingAddress
             );
 
-
             if (!$stmt->execute()) {
-
                 $stmt->close();
 
                 throw new Exception(
@@ -258,21 +221,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             }
 
-
             // Get newly created order ID.
             $orderId = $stmt->insert_id;
 
             $stmt->close();
-
 
             // ==========================================
             // INSERT ORDER ITEMS
             // ==========================================
 
             foreach ($cartItems as $item) {
-
                 $stmt = $mysqli->prepare(
-                    "INSERT INTO order_items
+                    'INSERT INTO order_items
                     (
                         order_id,
                         product_id,
@@ -280,12 +240,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         unit_price,
                         subtotal
                     )
-                    VALUES (?, ?, ?, ?, ?)"
+                    VALUES (?, ?, ?, ?, ?)'
                 );
 
-
                 $stmt->bind_param(
-                    "iiidd",
+                    'iiidd',
                     $orderId,
                     $item['product_id'],
                     $item['quantity'],
@@ -293,9 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $item['subtotal']
                 );
 
-
                 if (!$stmt->execute()) {
-
                     $stmt->close();
 
                     throw new Exception(
@@ -303,30 +260,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-
                 $stmt->close();
-
 
                 // ======================================
                 // REDUCE PRODUCT STOCK
                 // ======================================
 
                 $stmt = $mysqli->prepare(
-                    "UPDATE products
+                    'UPDATE products
                      SET stock = stock - ?
-                     WHERE id = ?"
+                     WHERE id = ?'
                 );
 
-
                 $stmt->bind_param(
-                    "ii",
+                    'ii',
                     $item['quantity'],
                     $item['product_id']
                 );
 
-
                 if (!$stmt->execute()) {
-
                     $stmt->close();
 
                     throw new Exception(
@@ -334,10 +286,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-
                 $stmt->close();
             }
-
 
             // ==========================================
             // COMMIT TRANSACTION
@@ -349,7 +299,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              */
             $mysqli->commit();
 
-
             // ==========================================
             // CLEAR CART
             // ==========================================
@@ -360,7 +309,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              */
             $_SESSION['cart'] = [];
 
-
             // ==========================================
             // SUCCESS
             // ==========================================
@@ -370,18 +318,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'Order placed successfully.'
             );
 
-
             header(
                 'Location: order-confirmation.php?id='
                 . $orderId
             );
 
             exit;
-
-
         } catch (Throwable $e) {
-
-
             /*
              * Something went wrong.
              *
@@ -390,13 +333,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              */
             $mysqli->rollback();
 
-
             $error =
                 $e->getMessage();
         }
     }
 }
-
 
 // ======================================================
 // GET FLASH MESSAGE
@@ -472,8 +413,8 @@ $successMessage =
                 rows="4"
                 required
             ><?= htmlspecialchars(
-                $_POST['shipping_address'] ?? ''
-            ) ?></textarea>
+    $_POST['shipping_address'] ?? ''
+) ?></textarea>
 
         </div>
 
@@ -506,8 +447,8 @@ $successMessage =
                 <option
                     value="cod"
                     <?= (
-                        ($_POST['payment_method'] ?? '')
-                        === 'cod'
+                        ($_POST['payment_method'] ?? '') ===
+                        'cod'
                     ) ? 'selected' : '' ?>
                 >
                     Cash on Delivery
@@ -516,8 +457,8 @@ $successMessage =
                 <option
                     value="paypal"
                     <?= (
-                        ($_POST['payment_method'] ?? '')
-                        === 'paypal'
+                        ($_POST['payment_method'] ?? '') ===
+                        'paypal'
                     ) ? 'selected' : '' ?>
                 >
                     PayPal

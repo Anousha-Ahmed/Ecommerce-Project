@@ -16,7 +16,6 @@ $email = '';
 
 // Check whether the login form was submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     // Get submitted form values
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -36,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Only attempt database login if validation passed
     if ($validator->isValid()) {
-
         /*
          * Auth::login() handles:
          * - Finding the user
@@ -46,10 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          * - Saving user information in session
          */
         if ($auth->login($email, $password)) {
-
             // Check the logged-in user's role
             if ($auth->isAdmin()) {
-
                 // Admin goes to admin dashboard
                 header('Location: ../admin/index.php');
                 exit;
@@ -114,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $successMessage = Session::getFlash('success');
 
                     if ($successMessage):
-                    ?>
+                        ?>
 
                         <div class="alert alert-success">
                             <?= htmlspecialchars($successMessage) ?>
