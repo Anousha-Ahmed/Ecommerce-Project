@@ -5,85 +5,47 @@ require_once __DIR__ . '/../core/Session.php';
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Auth.php';
 
-
 // Start session.
 Session::start();
-
 
 // Create Auth object.
 $auth = new Auth();
 
-
-// ======================================================
 // CHECK LOGIN
-// ======================================================
 
 /*
  * Only a logged-in customer can view
  * their order confirmation.
  */
 if (!$auth->isLoggedIn()) {
-
     header('Location: login.php');
     exit;
 }
 
-
-// ======================================================
 // DATABASE CONNECTION
-// ======================================================
 
 $database = new Database();
 $mysqli = $database->getConnection();
 
-
-// ======================================================
 // GET ORDER ID
-// ======================================================
 
-/*
- * Checkout redirects here like:
- *
- * order-confirmation.php?id=5
- *
- * So we read the order ID from the URL.
- */
 $orderId = isset($_GET['id'])
     ? (int) $_GET['id']
     : 0;
 
-
 // Make sure a valid order ID exists.
 if ($orderId <= 0) {
-
     die('Invalid order ID.');
 }
 
-
-// ======================================================
 // GET CURRENT USER ID
-// ======================================================
 
 $userId = $auth->userId();
 
-
-// ======================================================
 // FETCH ORDER
-// ======================================================
 
-/*
- * IMPORTANT:
- *
- * We use BOTH:
- *
- *     o.id = ?
- *     o.user_id = ?
- *
- * This means a customer can only view
- * their own order.
- */
 $stmt = $mysqli->prepare(
-    "SELECT
+    'SELECT
         o.id,
         o.order_number,
         o.total_amount,
@@ -95,53 +57,38 @@ $stmt = $mysqli->prepare(
      FROM orders AS o
      WHERE o.id = ?
        AND o.user_id = ?
-     LIMIT 1"
+     LIMIT 1'
 );
-
 
 // Both values are integers.
 $stmt->bind_param(
-    "ii",
+    'ii',
     $orderId,
     $userId
 );
 
-
 // Execute query.
 $stmt->execute();
-
 
 // Get result.
 $result = $stmt->get_result();
 
-
 // Order not found.
 if ($result->num_rows !== 1) {
-
     $stmt->close();
 
     die('Order not found.');
 }
-
 
 // Get order data.
 $order = $result->fetch_assoc();
 
 $stmt->close();
 
-
-// ======================================================
 // FETCH ORDER ITEMS
-// ======================================================
 
-/*
- * order_items contains the products
- * that belong to this order.
- *
- * We JOIN products to get the product name.
- */
 $stmt = $mysqli->prepare(
-    "SELECT
+    'SELECT
         oi.quantity,
         oi.unit_price,
         oi.subtotal,
@@ -150,18 +97,15 @@ $stmt = $mysqli->prepare(
      INNER JOIN products AS p
         ON oi.product_id = p.id
      WHERE oi.order_id = ?
-     ORDER BY oi.id ASC"
+     ORDER BY oi.id ASC'
 );
 
-
 $stmt->bind_param(
-    "i",
+    'i',
     $orderId
 );
 
-
 $stmt->execute();
-
 
 $itemsResult = $stmt->get_result();
 
@@ -200,9 +144,6 @@ $stmt->close();
 <div class="container py-5">
 
 
-    <!-- ==========================================
-         SUCCESS MESSAGE
-         ========================================== -->
 
     <div class="alert alert-success">
 
@@ -219,9 +160,9 @@ $stmt->close();
     </div>
 
 
-    <!-- ==========================================
-         ORDER INFORMATION
-         ========================================== -->
+ 
+         <!-- ORDER INFORMATION -->
+        
 
     <div class="card shadow-sm mb-4">
 
@@ -323,10 +264,8 @@ $stmt->close();
 
     </div>
 
-
-    <!-- ==========================================
-         ORDER ITEMS
-         ========================================== -->
+<!-- 
+   ORDER ITEMS -->
 
     <div class="card shadow-sm">
 
@@ -456,9 +395,6 @@ $stmt->close();
     </div>
 
 
-    <!-- ==========================================
-         NAVIGATION
-         ========================================== -->
 
     <div class="mt-4">
 

@@ -3,28 +3,22 @@
 require_once __DIR__ . '/../core/Database.php';
 
 $database = new Database();
-$mysqli   = $database->getConnection();
+$mysqli = $database->getConnection();
 
-
-// ======================================================
 // FEATURED CATEGORIES (for the "Shop by Category" row)
-// ======================================================
 
 $categoriesResult = $mysqli->query(
-    "SELECT id, name
+    'SELECT id, name
      FROM categories
      WHERE status = 1
      ORDER BY name ASC
-     LIMIT 6"
+     LIMIT 6'
 );
 
-
-// ======================================================
 // FEATURED PRODUCTS (latest 8 active products)
-// ======================================================
 
 $featuredResult = $mysqli->query(
-    "SELECT
+    'SELECT
         p.id,
         p.name,
         p.price,
@@ -37,18 +31,15 @@ $featuredResult = $mysqli->query(
      WHERE p.status = 1
        AND c.status = 1
      ORDER BY p.id DESC
-     LIMIT 8"
+     LIMIT 8'
 );
-
 
 $pageTitle = 'Home - Store';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-    <!-- ==========================================
-         HERO BANNER
-         ========================================== -->
+   
 
     <div class="intro-section">
         <div class="container">
@@ -65,12 +56,9 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
             </div>
         </div>
-    </div><!-- End .intro-section -->
+    </div>
 
-
-    <!-- ==========================================
-         SHOP BY CATEGORY
-         ========================================== -->
+<!-- SHOP BY CATEGORY -->
 
     <div class="container mt-6 mb-6">
 
@@ -108,12 +96,10 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
         </div>
-    </div><!-- End Shop by Category -->
+    </div>
 
 
-    <!-- ==========================================
-         FEATURED PRODUCTS
-         ========================================== -->
+    <!-- FEATURED PRODUCTS -->
 
     <div class="container mb-6">
 
@@ -168,9 +154,9 @@ require_once __DIR__ . '/../includes/header.php';
                                                 <span>view details</span>
                                             </a>
                                         <?php endif; ?>
-                                    </div><!-- End .product-action -->
+                                    </div>
 
-                                </figure><!-- End .product-media -->
+                                </figure>
 
                                 <div class="product-body">
                                     <div class="product-cat">
@@ -186,9 +172,9 @@ require_once __DIR__ . '/../includes/header.php';
                                     <div class="product-price">
                                         Rs. <?= number_format((float) $product['price'], 2) ?>
                                     </div>
-                                </div><!-- End .product-body -->
+                                </div>
 
-                            </div><!-- End .product -->
+                            </div>
                         </div>
 
                     <?php endwhile; ?>
@@ -201,14 +187,12 @@ require_once __DIR__ . '/../includes/header.php';
 
                 <?php endif; ?>
 
-            </div><!-- End .row -->
-        </div><!-- End .products -->
-    </div><!-- End Featured Products -->
+            </div>
+        </div>
+    </div>
 
 
-    <!-- ==========================================
-         CALL TO ACTION
-         ========================================== -->
+ 
 
     <div class="container mb-6">
         <div class="row">

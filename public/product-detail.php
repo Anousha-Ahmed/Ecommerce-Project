@@ -3,48 +3,25 @@
 // Load database connection.
 require_once __DIR__ . '/../core/Database.php';
 
-
 // Create database connection.
 $database = new Database();
 $mysqli = $database->getConnection();
 
-
-// ======================================================
 // GET PRODUCT ID
-// ======================================================
 
-/*
- * Product ID URL se aa rahi hai:
- *
- * product-detail.php?id=3
- *
- * (int) user input ko integer mein convert karta hai.
- */
 $productId = isset($_GET['id'])
     ? (int) $_GET['id']
     : 0;
 
-
 // If no valid ID was provided, stop here.
 if ($productId <= 0) {
-
     die('Invalid product ID.');
 }
 
-
-// ======================================================
 // FETCH PRODUCT
-// ======================================================
 
-/*
- * Product ke saath category ka naam bhi chahiye.
- *
- * products.category_id
- *        ↓
- * categories.id
- */
 $stmt = $mysqli->prepare(
-    "SELECT
+    'SELECT
         p.id,
         p.name,
         p.slug,
@@ -60,34 +37,27 @@ $stmt = $mysqli->prepare(
      WHERE p.id = ?
        AND p.status = 1
        AND c.status = 1
-     LIMIT 1"
+     LIMIT 1'
 );
 
-
 // Product ID is an integer.
-$stmt->bind_param("i", $productId);
-
+$stmt->bind_param('i', $productId);
 
 // Execute query.
 $stmt->execute();
 
-
 // Get result.
 $result = $stmt->get_result();
 
-
 // Product does not exist.
 if ($result->num_rows !== 1) {
-
     $stmt->close();
 
     die('Product not found.');
 }
 
-
 // Get product data.
 $product = $result->fetch_assoc();
-
 
 // Close statement.
 $stmt->close();
@@ -124,17 +94,13 @@ $stmt->close();
 
 <div class="container py-5">
 
-
-    <!-- ==========================================
-         PRODUCT DETAILS
-         ========================================== -->
+<!-- 
+     PRODUCT DETAILS -->
 
     <div class="row g-5">
 
 
-        <!-- ==========================================
-             PRODUCT IMAGE
-             ========================================== -->
+         <!-- PRODUCT IMAGE -->
 
         <div class="col-md-6">
 
@@ -143,11 +109,11 @@ $stmt->close();
 
                 <img
                     src="uploads/products/<?= htmlspecialchars(
-                        $product['image']
-                    ) ?>"
+        $product['image']
+    ) ?>"
                     alt="<?= htmlspecialchars(
-                        $product['name']
-                    ) ?>"
+        $product['name']
+    ) ?>"
                     class="img-fluid rounded"
                     style="
                         width: 100%;
@@ -179,9 +145,7 @@ $stmt->close();
         </div>
 
 
-        <!-- ==========================================
-             PRODUCT INFORMATION
-             ========================================== -->
+        <!-- PRODUCT INFORMATION -->
 
         <div class="col-md-6">
 
@@ -261,9 +225,7 @@ $stmt->close();
             </p>
 
 
-            <!-- ==========================================
-                 ACTION BUTTONS
-                 ========================================== -->
+            <!-- ACTION BUTTONS -->
 
             <div class="mt-4">
 

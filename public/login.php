@@ -1,8 +1,12 @@
 <?php
 
 // Load required classes
+require_once __DIR__ . '/../core/Session.php';
 require_once __DIR__ . '/../core/Auth.php';
 require_once __DIR__ . '/../core/Validator.php';
+
+// Session is needed for flash messages and login state
+Session::start();
 
 // Create Auth and Validator objects
 $auth = new Auth();
@@ -16,15 +20,12 @@ $email = '';
 
 // Check whether the login form was submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     // Get submitted form values
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    /*
-     * Server-side validation.
-     * We validate again on the server because browser
-     * validation can be bypassed.
-     */
+    // Server-side validation, browser validation can be bypassed
     $validator
         ->required('email', $email, 'Email is required.')
         ->email('email', $email)
@@ -35,18 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Only attempt database login if validation passed
     if ($validator->isValid()) {
-        /*
-         * Auth::login() handles:
-         * - Finding the user
-         * - Checking active status
-         * - password_verify()
-         * - Session regeneration
-         * - Saving user information in session
-         */
+
+        // Auth::login() checks the user, password and starts the session
         if ($auth->login($email, $password)) {
-            // Check the logged-in user's role
+
+            // Admin goes to admin dashboard
             if ($auth->isAdmin()) {
-                // Admin goes to admin dashboard
                 header('Location: ../admin/index.php');
                 exit;
             }
@@ -60,89 +55,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['login'] = 'Invalid email or password.';
     }
 }
+
+// Flash message coming from register.php after a successful signup
+$successMessage = Session::getFlash('success');
+
+$pageTitle = 'Login - Store';
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
+    <nav aria-label="breadcrumb" class="breadcrumb-nav border-0 mb-0">
+        <div class="container">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.php">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Login</li>
+            </ol>
+        </div>
+    </nav><!-- End .breadcrumb-nav -->
 
-<head>
+    <div class="login-page bg-image pt-8 pb-8 pt-md-12 pb-md-12 pt-lg-17 pb-lg-17" style="background-image: url('assets/images/backgrounds/login-bg.jpg')">
+        <div class="container">
+            <div class="form-box" style="max-width:450px; margin:0 auto;">
+                <div class="form-tab">
 
-    <meta charset="UTF-8">
+                    <h2 class="text-center mb-4">Sign In</h2>
 
-    <!-- Responsive layout -->
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Login - E-Commerce</title>
-
-    <!-- Bootstrap CSS -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-</head>
-
-<body>
-
-<div class="container py-5">
-
-    <div class="row justify-content-center">
-
-        <div class="col-md-6 col-lg-5">
-
-            <div class="card shadow-sm">
-
-                <div class="card-body p-4">
-
-                    <h2 class="text-center mb-4">
-                        Login
-                    </h2>
-
-                    <!--
-                        Display flash message from registration.
-                        Example:
-                        "Registration successful. You can now login."
-                    -->
-                    <?php
-                    $successMessage = Session::getFlash('success');
-
-                    if ($successMessage):
-                        ?>
-
+                    <?php if ($successMessage): ?>
                         <div class="alert alert-success">
                             <?= htmlspecialchars($successMessage) ?>
                         </div>
-
                     <?php endif; ?>
 
-
-                    <!-- General login error -->
-
                     <?php if (isset($errors['login'])): ?>
-
                         <div class="alert alert-danger">
                             <?= htmlspecialchars($errors['login']) ?>
                         </div>
-
                     <?php endif; ?>
 
+                    <form method="POST" action="login.php">
 
-                    <form method="POST" action="">
-
-                        <!-- Email -->
-
-                        <div class="mb-3">
-
-                            <label
-                                for="email"
-                                class="form-label"
-                            >
-                                Email
-                            </label>
-
+                        <div class="form-group">
+                            <label for="email">Email address *</label>
                             <input
                                 type="email"
                                 id="email"
@@ -151,29 +104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 value="<?= htmlspecialchars($email) ?>"
                                 required
                             >
-
                             <?php if (isset($errors['email'])): ?>
-
-                                <div class="text-danger small mt-1">
-                                    <?= htmlspecialchars($errors['email']) ?>
-                                </div>
-
+                                <div class="text-danger small mt-1"><?= htmlspecialchars($errors['email']) ?></div>
                             <?php endif; ?>
-
                         </div>
 
-
-                        <!-- Password -->
-
-                        <div class="mb-3">
-
-                            <label
-                                for="password"
-                                class="form-label"
-                            >
-                                Password
-                            </label>
-
+                        <div class="form-group">
+                            <label for="password">Password *</label>
                             <input
                                 type="password"
                                 id="password"
@@ -181,49 +118,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 class="form-control"
                                 required
                             >
-
                             <?php if (isset($errors['password'])): ?>
-
-                                <div class="text-danger small mt-1">
-                                    <?= htmlspecialchars($errors['password']) ?>
-                                </div>
-
+                                <div class="text-danger small mt-1"><?= htmlspecialchars($errors['password']) ?></div>
                             <?php endif; ?>
-
                         </div>
 
-
-                        <!-- Login button -->
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary w-100"
-                        >
-                            Login
-                        </button>
+                        <div class="form-footer">
+                            <button type="submit" class="btn btn-outline-primary-2">
+                                <span>LOG IN</span>
+                                <i class="icon-long-arrow-right"></i>
+                            </button>
+                        </div>
 
                     </form>
 
-
                     <p class="text-center mt-3 mb-0">
-
                         Don't have an account?
-
-                        <a href="register.php">
-                            Create Account
-                        </a>
-
+                        <a href="register.php">Create Account</a>
                     </p>
 
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-</div>
-
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

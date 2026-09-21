@@ -7,9 +7,7 @@ require_once __DIR__ . '/../core/Auth.php';
 // Start session.
 Session::start();
 
-// ======================================================
 // AUTHENTICATION
-// ======================================================
 
 $auth = new Auth();
 
@@ -24,16 +22,12 @@ if (!$auth->isLoggedIn()) {
     exit;
 }
 
-// ======================================================
 // DATABASE
-// ======================================================
 
 $database = new Database();
 $mysqli = $database->getConnection();
 
-// ======================================================
 // CHECK CART
-// ======================================================
 
 if (
     !isset($_SESSION['cart']) ||
@@ -50,9 +44,7 @@ if (
 
 $error = '';
 
-// ======================================================
 // CHECKOUT FORM
-// ======================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get shipping address.
@@ -63,9 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paymentMethod =
         $_POST['payment_method'] ?? '';
 
-    // ----------------------------------------------
     // VALIDATION
-    // ----------------------------------------------
 
     if ($shippingAddress === '') {
         $error = 'Shipping address is required.';
@@ -76,12 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             true
         )
     ) {
-        $error = 'Invalid payment method.';
+        $error = 'Please choose a payment method.';
     }
 
-    // ==================================================
     // CREATE ORDER
-    // ==================================================
 
     if ($error === '') {
         try {
@@ -97,9 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $totalAmount = 0;
 
-            // ==========================================
             // CHECK PRODUCTS + STOCK
-            // ==========================================
 
             foreach ($_SESSION['cart'] as $productId => $quantity) {
                 $productId = (int) $productId;
@@ -167,15 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Store validated item for later insertion.
                 $cartItems[] = [
                     'product_id' => $productId,
+                    'name' => $product['name'],
                     'quantity' => $quantity,
                     'unit_price' => (float) $product['price'],
                     'subtotal' => $subtotal
                 ];
             }
 
-            // ==========================================
             // GENERATE ORDER NUMBER
-            // ==========================================
 
             $orderNumber =
                 'ORD-'
@@ -186,9 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Current logged-in user's ID.
             $userId = $auth->userId();
 
-            // ==========================================
             // INSERT ORDER
-            // ==========================================
 
             $stmt = $mysqli->prepare(
                 "INSERT INTO orders
@@ -226,9 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt->close();
 
-            // ==========================================
             // INSERT ORDER ITEMS
-            // ==========================================
 
             foreach ($cartItems as $item) {
                 $stmt = $mysqli->prepare(
@@ -262,9 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt->close();
 
-                // ======================================
                 // REDUCE PRODUCT STOCK
-                // ======================================
 
                 $stmt = $mysqli->prepare(
                     'UPDATE products
@@ -289,29 +268,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
             }
 
-            // ==========================================
             // COMMIT TRANSACTION
-            // ==========================================
 
-            /*
-             * All database operations succeeded.
-             * Permanently save them.
-             */
             $mysqli->commit();
 
-            // ==========================================
             // CLEAR CART
-            // ==========================================
 
             /*
              * Order successfully created,
              * so customer's cart is now empty.
              */
             $_SESSION['cart'] = [];
-
-            // ==========================================
-            // SUCCESS
-            // ==========================================
 
             Session::flash(
                 'success',
@@ -339,156 +306,175 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ======================================================
-// GET FLASH MESSAGE
-// ======================================================
+// FETCH CART PRODUCTS FOR ORDER SUMMARY
 
-$successMessage =
-    Session::getFlash('success');
+$cartProducts = [];
+$cartTotal = 0;
 
+foreach ($_SESSION['cart'] as $productId => $quantity) {
+    $productId = (int) $productId;
+    $quantity = (int) $quantity;
+
+    if ($productId <= 0 || $quantity <= 0) {
+        continue;
+    }
+
+    $stmt = $mysqli->prepare(
+        'SELECT id, name, price
+         FROM products
+         WHERE id = ?
+           AND status = 1
+         LIMIT 1'
+    );
+
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $product = $result->fetch_assoc();
+
+        $subtotal = (float) $product['price'] * $quantity;
+
+        $product['quantity'] = $quantity;
+        $product['subtotal'] = $subtotal;
+
+        $cartTotal += $subtotal;
+
+        $cartProducts[] = $product;
+    }
+
+    $stmt->close();
+}
+
+$pageTitle = 'Checkout - Store';
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
+   <!-- Page Header -->
 
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Checkout</title>
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-</head>
-
-
-<body>
-
-<div class="container py-5">
-
-    <h1 class="mb-4">
-        Checkout
-    </h1>
-
-
-    <?php if ($error !== ''): ?>
-
-        <div class="alert alert-danger">
-
-            <?= htmlspecialchars($error) ?>
-
+    <div class="page-header text-center" style="background-color:#f4f4f4; padding:40px 0;">
+        <div class="container">
+            <h1 class="page-title">
+                Checkout
+                <span>Shop</span>
+            </h1>
         </div>
+    </div>
 
-    <?php endif; ?>
-
-
-    <form method="POST">
-
-
-        <!-- ==========================================
-             SHIPPING ADDRESS
-             ========================================== -->
-
-        <div class="mb-3">
-
-            <label
-                for="shipping_address"
-                class="form-label"
-            >
-                Shipping Address
-            </label>
-
-            <textarea
-                name="shipping_address"
-                id="shipping_address"
-                class="form-control"
-                rows="4"
-                required
-            ><?= htmlspecialchars(
-    $_POST['shipping_address'] ?? ''
-) ?></textarea>
-
+    <nav aria-label="breadcrumb" class="breadcrumb-nav mb-2">
+        <div class="container">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.php">Home</a></li>
+                <li class="breadcrumb-item"><a href="cart.php">Cart</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Checkout</li>
+            </ol>
         </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="checkout">
+            <div class="container">
+
+                <?php if ($error !== ''): ?>
+                    <div class="alert alert-danger">
+                        <?= htmlspecialchars($error) ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" action="checkout.php">
+                    <div class="row">
+
+                        
+                             SHIPPING DETAILS
+                            
+
+                        <div class="col-lg-9">
+                            <h2 class="checkout-title">Shipping Details</h2>
+
+                            <label>Shipping Address *</label>
+                            <textarea
+                                name="shipping_address"
+                                class="form-control"
+                                rows="4"
+                                placeholder="House number, street, city, postal code..."
+                                required
+                            ><?= htmlspecialchars($_POST['shipping_address'] ?? '') ?></textarea>
+
+                            <label class="mt-3">Payment Method *</label>
+
+                            <?php $selectedPayment = $_POST['payment_method'] ?? ''; ?>
+
+                            <div class="custom-control custom-radio mt-2">
+                                <input type="radio" id="pay-cod" name="payment_method" value="cod" class="custom-control-input" <?= $selectedPayment === 'cod' ? 'checked' : '' ?> required>
+                                <label class="custom-control-label" for="pay-cod">Cash on Delivery</label>
+                            </div>
+
+                            <div class="custom-control custom-radio mt-2">
+                                <input type="radio" id="pay-paypal" name="payment_method" value="paypal" class="custom-control-input" <?= $selectedPayment === 'paypal' ? 'checked' : '' ?> required>
+                                <label class="custom-control-label" for="pay-paypal">PayPal</label>
+                            </div>
+                        </div>
 
 
-        <!-- ==========================================
-             PAYMENT METHOD
-             ========================================== -->
+                             <!-- ORDER SUMMARY -->
+                        
 
-        <div class="mb-3">
+                        <aside class="col-lg-3">
+                            <div class="summary">
+                                <h3 class="summary-title">Your Order</h3>
 
-            <label
-                for="payment_method"
-                class="form-label"
-            >
-                Payment Method
-            </label>
+                                <table class="table table-summary">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
 
+                                    <tbody>
 
-            <select
-                name="payment_method"
-                id="payment_method"
-                class="form-select"
-                required
-            >
+                                        <?php foreach ($cartProducts as $product): ?>
+                                            <tr>
+                                                <td>
+                                                    <?= htmlspecialchars($product['name']) ?>
+                                                    &times; <?= (int) $product['quantity'] ?>
+                                                </td>
+                                                <td>Rs. <?= number_format($product['subtotal'], 2) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
 
-                <option value="">
-                    Select payment method
-                </option>
+                                        <tr class="summary-subtotal">
+                                            <td>Subtotal:</td>
+                                            <td>Rs. <?= number_format($cartTotal, 2) ?></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Shipping:</td>
+                                            <td>Free shipping</td>
+                                        </tr>
+                                        <tr class="summary-total">
+                                            <td>Total:</td>
+                                            <td>Rs. <?= number_format($cartTotal, 2) ?></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
 
-                <option
-                    value="cod"
-                    <?= (
-                        ($_POST['payment_method'] ?? '') ===
-                        'cod'
-                    ) ? 'selected' : '' ?>
-                >
-                    Cash on Delivery
-                </option>
+                                <button type="submit" class="btn btn-outline-primary-2 btn-order btn-block">
+                                    <span class="btn-text">Place Order</span>
+                                </button>
+                            </div>\
 
-                <option
-                    value="paypal"
-                    <?= (
-                        ($_POST['payment_method'] ?? '') ===
-                        'paypal'
-                    ) ? 'selected' : '' ?>
-                >
-                    PayPal
-                </option>
+                            <a href="cart.php" class="btn btn-outline-dark-2 btn-block mt-3">
+                                <span>BACK TO CART</span>
+                            </a>
+                        </aside>
 
-            </select>
+                    </div>
+                </form>
 
+            </div>
         </div>
+    </div>
 
-
-        <button
-            type="submit"
-            class="btn btn-success"
-        >
-            Place Order
-        </button>
-
-
-        <a
-            href="cart.php"
-            class="btn btn-secondary"
-        >
-            Back to Cart
-        </a>
-
-
-    </form>
-
-</div>
-
-</body>
-
-</html> 
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
