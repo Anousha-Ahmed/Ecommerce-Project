@@ -7,30 +7,10 @@ require_once __DIR__ . '/../auth-check.php';
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Session.php';
 
-
-// ==========================================
-// DATABASE CONNECTION
-// ==========================================
-
 $database = new Database();
 $mysqli = $database->getConnection();
 
-
-// ==========================================
-// FETCH ORDERS
-// ==========================================
-
-/*
- * We need information from two tables:
- *
- * orders
- * users
- *
- * orders.user_id = users.id
- *
- * This JOIN allows us to show the customer's
- * name and email along with the order.
- */
+// Fetch orders, joined with customer info.
 $stmt = $mysqli->prepare(
     "SELECT
         o.id,
@@ -39,7 +19,6 @@ $stmt = $mysqli->prepare(
         o.payment_method,
         o.payment_status,
         o.order_status,
-        o.shipping_address,
         o.created_at,
         u.name AS customer_name,
         u.email AS customer_email
@@ -49,375 +28,133 @@ $stmt = $mysqli->prepare(
      ORDER BY o.id DESC"
 );
 
-
-// Execute SELECT query.
 $stmt->execute();
 
-
-// Get result.
 $result = $stmt->get_result();
 
-
-// Get flash messages.
 $successMessage = Session::getFlash('success');
 $errorMessage = Session::getFlash('error');
 
+$basePath = '../';
+$pageTitle = 'Orders';
+
+require_once __DIR__ . '/../../includes/admin-header.php';
 ?>
 
-
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Orders - Admin</title>
-
-
-    <!-- Temporary Bootstrap styling.
-         Later we will integrate the admin template. -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-</head>
-
-
-<body>
-
-
-<div class="container py-5">
-
-
-    <!-- ==========================================
-         PAGE HEADING
-         ========================================== -->
-
-    <div class="mb-4">
-
-        <h1 class="mb-1">
-            Orders
-        </h1>
-
-        <p class="text-muted mb-0">
-            Manage customer orders.
-        </p>
-
-    </div>
-
-
-    <!-- ==========================================
-         FLASH MESSAGES
-         ========================================== -->
-
     <?php if ($successMessage !== null): ?>
-
-        <div class="alert alert-success">
-
+        <div class="alert alert-success text-white">
             <?= htmlspecialchars($successMessage) ?>
-
         </div>
-
     <?php endif; ?>
-
 
     <?php if ($errorMessage !== null): ?>
-
-        <div class="alert alert-danger">
-
+        <div class="alert alert-danger text-white">
             <?= htmlspecialchars($errorMessage) ?>
-
         </div>
-
     <?php endif; ?>
 
-
-    <!-- ==========================================
-         ORDERS TABLE
-         ========================================== -->
-
-    <div class="card shadow-sm">
-
-        <div class="card-body">
-
-            <div class="table-responsive">
-
-                <table class="table table-bordered table-hover align-middle">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>ID</th>
-
-                            <th>Order #</th>
-
-                            <th>Customer</th>
-
-                            <th>Total</th>
-
-                            <th>Payment</th>
-
-                            <th>Payment Status</th>
-
-                            <th>Order Status</th>
-
-                            <th>Date</th>
-
-                            <th>Actions</th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-
-                    <?php if ($result->num_rows > 0): ?>
-
-
-                        <?php while ($order = $result->fetch_assoc()): ?>
-
-                            <tr>
-
-
-                                <!-- Order ID -->
-
-                                <td>
-
-                                    <?= (int) $order['id'] ?>
-
-                                </td>
-
-
-                                <!-- Order Number -->
-
-                                <td>
-
-                                    <?= htmlspecialchars(
-                                        $order['order_number']
-                                    ) ?>
-
-                                </td>
-
-
-                                <!-- Customer -->
-
-                                <td>
-
-                                    <strong>
-
-                                        <?= htmlspecialchars(
-                                            $order['customer_name']
-                                        ) ?>
-
-                                    </strong>
-
-                                    <br>
-
-                                    <small class="text-muted">
-
-                                        <?= htmlspecialchars(
-                                            $order['customer_email']
-                                        ) ?>
-
-                                    </small>
-
-                                </td>
-
-
-                                <!-- Total Amount -->
-
-                                <td>
-
-                                    Rs.
-                                    <?= number_format(
-                                        (float) $order['total_amount'],
-                                        2
-                                    ) ?>
-
-                                </td>
-
-
-                                <!-- Payment Method -->
-
-                                <td>
-
-                                    <?= htmlspecialchars(
-                                        strtoupper(
-                                            $order['payment_method']
-                                        )
-                                    ) ?>
-
-                                </td>
-
-
-                                <!-- Payment Status -->
-
-                                <td>
-
-                                    <?php
-                                    $paymentStatus =
-                                        $order['payment_status'];
-                                    ?>
-
-
-                                    <?php if ($paymentStatus === 'completed'): ?>
-
-                                        <span class="badge bg-success">
-
-                                            Completed
-
-                                        </span>
-
-                                    <?php elseif ($paymentStatus === 'failed'): ?>
-
-                                        <span class="badge bg-danger">
-
-                                            Failed
-
-                                        </span>
-
-                                    <?php else: ?>
-
-                                        <span class="badge bg-warning text-dark">
-
-                                            Pending
-
-                                        </span>
-
-                                    <?php endif; ?>
-
-                                </td>
-
-
-                                <!-- Order Status -->
-
-                                <td>
-
-                                    <?php
-                                    $orderStatus =
-                                        $order['order_status'];
-                                    ?>
-
-
-                                    <?php if ($orderStatus === 'delivered'): ?>
-
-                                        <span class="badge bg-success">
-
-                                            Delivered
-
-                                        </span>
-
-                                    <?php elseif ($orderStatus === 'shipped'): ?>
-
-                                        <span class="badge bg-info text-dark">
-
-                                            Shipped
-
-                                        </span>
-
-                                    <?php elseif ($orderStatus === 'cancelled'): ?>
-
-                                        <span class="badge bg-danger">
-
-                                            Cancelled
-
-                                        </span>
-
-                                    <?php else: ?>
-
-                                        <span class="badge bg-warning text-dark">
-
-                                            Processing
-
-                                        </span>
-
-                                    <?php endif; ?>
-
-                                </td>
-
-
-                                <!-- Created Date -->
-
-                                <td>
-
-                                    <?= htmlspecialchars(
-                                        $order['created_at']
-                                    ) ?>
-
-                                </td>
-
-
-                                <!-- Actions -->
-
-                                <td>
-
-                                    <a
-                                        href="detail.php?id=<?= (int) $order['id'] ?>"
-                                        class="btn btn-sm btn-primary"
-                                    >
-                                        View
-                                    </a>
-
-                                </td>
-
-
-                            </tr>
-
-                        <?php endwhile; ?>
-
-
-                    <?php else: ?>
-
-
-                        <tr>
-
-                            <td
-                                colspan="9"
-                                class="text-center text-muted py-4"
-                            >
-
-                                No orders found.
-
-                            </td>
-
-                        </tr>
-
-
-                    <?php endif; ?>
-
-
-                    </tbody>
-
-                </table>
-
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+
+                <div class="card-header pb-0">
+                    <h6>Orders</h6>
+                </div>
+
+                <div class="card-body px-0 pt-0 pb-2">
+                    <div class="table-responsive p-0">
+                        <table class="table align-items-center mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7 ps-4">Order #</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Customer</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Total</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Payment</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Payment Status</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Order Status</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Date</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                <?php if ($result->num_rows > 0): ?>
+
+                                    <?php while ($order = $result->fetch_assoc()): ?>
+
+                                        <?php
+                                        $paymentStatus = $order['payment_status'];
+                                        $paymentBadge = 'secondary';
+                                        if ($paymentStatus === 'paid') { $paymentBadge = 'success'; }
+                                        elseif ($paymentStatus === 'failed') { $paymentBadge = 'danger'; }
+
+                                        $orderStatus = $order['order_status'];
+                                        $orderBadge = 'secondary';
+                                        if ($orderStatus === 'delivered') { $orderBadge = 'success'; }
+                                        elseif ($orderStatus === 'shipped') { $orderBadge = 'info'; }
+                                        elseif ($orderStatus === 'cancelled') { $orderBadge = 'danger'; }
+                                        elseif ($orderStatus === 'processing') { $orderBadge = 'warning'; }
+                                        ?>
+
+                                        <tr>
+                                            <td class="ps-4">
+                                                <p class="text-xs font-weight-bold mb-0"><?= htmlspecialchars($order['order_number']) ?></p>
+                                                <p class="text-xs text-secondary mb-0">#<?= (int) $order['id'] ?></p>
+                                            </td>
+
+                                            <td>
+                                                <h6 class="mb-0 text-sm"><?= htmlspecialchars($order['customer_name']) ?></h6>
+                                                <p class="text-xs text-secondary mb-0"><?= htmlspecialchars($order['customer_email']) ?></p>
+                                            </td>
+
+                                            <td>
+                                                <p class="text-xs font-weight-bold mb-0">Rs. <?= number_format((float) $order['total_amount'], 2) ?></p>
+                                            </td>
+
+                                            <td>
+                                                <p class="text-xs font-weight-bold mb-0"><?= htmlspecialchars(strtoupper($order['payment_method'])) ?></p>
+                                            </td>
+
+                                            <td>
+                                                <span class="badge badge-sm bg-gradient-<?= $paymentBadge ?>"><?= htmlspecialchars(ucfirst($paymentStatus)) ?></span>
+                                            </td>
+
+                                            <td>
+                                                <span class="badge badge-sm bg-gradient-<?= $orderBadge ?>"><?= htmlspecialchars(ucfirst($orderStatus)) ?></span>
+                                            </td>
+
+                                            <td>
+                                                <p class="text-xs text-secondary mb-0"><?= htmlspecialchars($order['created_at']) ?></p>
+                                            </td>
+
+                                            <td class="text-end pe-4">
+                                                <a href="detail.php?id=<?= (int) $order['id'] ?>" class="text-secondary font-weight-bold text-xs">View</a>
+                                            </td>
+                                        </tr>
+
+                                    <?php endwhile; ?>
+
+                                <?php else: ?>
+
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4 text-muted">No orders found.</td>
+                                    </tr>
+
+                                <?php endif; ?>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-
         </div>
-
     </div>
-
-
-</div>
-
-
-</body>
-
-</html>
-
 
 <?php
 
-// Close prepared statement.
+require_once __DIR__ . '/../../includes/admin-footer.php';
+
 $stmt->close();
 
 ?>
