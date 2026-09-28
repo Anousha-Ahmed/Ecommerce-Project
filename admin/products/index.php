@@ -39,6 +39,7 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 $successMessage = Session::getFlash('success');
+$errorMessage = Session::getFlash('error');
 
 $basePath = '../';
 $pageTitle = 'Products';
@@ -49,6 +50,12 @@ require_once __DIR__ . '/../../includes/admin-header.php';
     <?php if ($successMessage): ?>
         <div class="alert alert-success text-white">
             <?= htmlspecialchars($successMessage) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($errorMessage): ?>
+        <div class="alert alert-danger text-white">
+            <?= htmlspecialchars($errorMessage) ?>
         </div>
     <?php endif; ?>
 
@@ -127,8 +134,7 @@ require_once __DIR__ . '/../../includes/admin-header.php';
                                             </td>
 
                                             <td class="text-end pe-4">
-                                                <a href="edit.php?id=<?= (int) $product['id'] ?>" class="text-secondary font-weight-bold text-xs me-3" title="Edit"><i class="material-symbols-rounded text-sm align-middle">edit</i></a>
-                                                <a href="delete.php?id=<?= (int) $product['id'] ?>" class="text-danger font-weight-bold text-xs" title="Delete" onclick="return confirm('Are you sure you want to delete this product?');"><i class="material-symbols-rounded text-sm align-middle">delete</i></a>
+                                                <a href="edit.php?id=<?= (int) $product['id'] ?>" class="text-secondary font-weight-bold text-xs" title="Edit"><i class="material-symbols-rounded text-sm align-middle">edit</i></a>
                                             </td>
                                         </tr>
 

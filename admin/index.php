@@ -18,11 +18,12 @@ $totalOrders = $mysqli->query("SELECT COUNT(*) AS total FROM orders")->fetch_ass
 // Total customers (role = customer)
 $totalCustomers = $mysqli->query("SELECT COUNT(*) AS total FROM users WHERE role = 'customer'")->fetch_assoc()['total'];
 
-// Total revenue from paid orders
+// Total revenue from paid orders (cancelled orders are not counted)
 $revenueRow = $mysqli->query(
     "SELECT COALESCE(SUM(total_amount), 0) AS total
      FROM orders
-     WHERE payment_status = 'paid'"
+     WHERE payment_status = 'paid'
+       AND order_status != 'cancelled'"
 )->fetch_assoc();
 
 $totalRevenue = (float) $revenueRow['total'];
@@ -146,7 +147,7 @@ require_once __DIR__ . '/../includes/admin-header.php';
                         <table class="table align-items-center mb-0">
                             <thead>
                                 <tr>
-                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7">Order #</th>
+                                    <th class="text-uppercase text-xs font-weight-bolder opacity-7 ps-4">Order #</th>
                                     <th class="text-uppercase text-xs font-weight-bolder opacity-7">Customer</th>
                                     <th class="text-uppercase text-xs font-weight-bolder opacity-7">Amount</th>
                                     <th class="text-uppercase text-xs font-weight-bolder opacity-7">Payment</th>

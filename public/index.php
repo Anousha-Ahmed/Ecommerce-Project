@@ -3,22 +3,28 @@
 require_once __DIR__ . '/../core/Database.php';
 
 $database = new Database();
-$mysqli = $database->getConnection();
+$mysqli   = $database->getConnection();
 
+
+// ======================================================
 // FEATURED CATEGORIES (for the "Shop by Category" row)
+// ======================================================
 
 $categoriesResult = $mysqli->query(
-    'SELECT id, name
+    "SELECT id, name, image
      FROM categories
      WHERE status = 1
      ORDER BY name ASC
-     LIMIT 6'
+     LIMIT 6"
 );
 
+
+// ======================================================
 // FEATURED PRODUCTS (latest 8 active products)
+// ======================================================
 
 $featuredResult = $mysqli->query(
-    'SELECT
+    "SELECT
         p.id,
         p.name,
         p.price,
@@ -31,34 +37,86 @@ $featuredResult = $mysqli->query(
      WHERE p.status = 1
        AND c.status = 1
      ORDER BY p.id DESC
-     LIMIT 8'
+     LIMIT 8"
 );
+
 
 $pageTitle = 'Home - Store';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-   
+    <!-- ==========================================
+         HERO BANNER (auto-rotating slider)
+         ========================================== -->
 
     <div class="intro-section">
         <div class="container">
             <div class="row">
                 <div class="col-12">
-                    <div class="intro-slide" style="background-color:#f4f4f4; border-radius:4px; padding:60px 40px; text-align:center;">
-                        <h4 class="intro-subtitle" style="letter-spacing:2px; color:#777;">NEW SEASON ARRIVALS</h4>
-                        <h1 class="intro-title" style="font-size:42px; font-weight:700; margin:10px 0 20px;">Shop the Latest Trends</h1>
-                        <a href="products.php" class="btn btn-primary btn-round">
-                            <span>Shop Now</span>
-                            <i class="icon-long-arrow-right"></i>
-                        </a>
-                    </div>
+
+                    <div class="intro-slider owl-carousel owl-simple owl-dark owl-nav-inside" data-toggle="owl" data-owl-options='{
+                            "nav": true,
+                            "dots": true,
+                            "loop": true,
+                            "autoplay": true,
+                            "autoplayTimeout": 5000,
+                            "animateOut": "fadeOut"
+                        }'>
+
+                        <div class="intro-slide">
+                            <div style="background-image:url('assets/images/slider/slide-1.jpg'); background-size:cover; background-position:center; border-radius:4px; padding:100px 40px; text-align:center; position:relative;">
+                                <div style="background:rgba(0,0,0,0.35); position:absolute; inset:0; border-radius:4px;"></div>
+                                <div style="position:relative; z-index:1;">
+                                    <h4 class="intro-subtitle" style="letter-spacing:2px; color:#fff;">NEW SEASON ARRIVALS</h4>
+                                    <h1 class="intro-title" style="font-size:42px; font-weight:700; margin:10px 0 20px; color:#fff;">Shop the Latest Trends</h1>
+                                    <a href="products.php" class="btn btn-primary btn-round">
+                                        <span>Shop Now</span>
+                                        <i class="icon-long-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="intro-slide">
+                            <div style="background-image:url('assets/images/slider/slide-2.jpg'); background-size:cover; background-position:center; border-radius:4px; padding:100px 40px; text-align:center; position:relative;">
+                                <div style="background:rgba(0,0,0,0.35); position:absolute; inset:0; border-radius:4px;"></div>
+                                <div style="position:relative; z-index:1;">
+                                    <h4 class="intro-subtitle" style="letter-spacing:2px; color:#fff;">LIMITED TIME OFFER</h4>
+                                    <h1 class="intro-title" style="font-size:42px; font-weight:700; margin:10px 0 20px; color:#fff;">Up to 50% Off</h1>
+                                    <a href="products.php" class="btn btn-primary btn-round">
+                                        <span>Shop Now</span>
+                                        <i class="icon-long-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="intro-slide">
+                            <div style="background-image:url('assets/images/slider/slide-3.jpg'); background-size:cover; background-position:center; border-radius:4px; padding:100px 40px; text-align:center; position:relative;">
+                                <div style="background:rgba(0,0,0,0.35); position:absolute; inset:0; border-radius:4px;"></div>
+                                <div style="position:relative; z-index:1;">
+                                    <h4 class="intro-subtitle" style="letter-spacing:2px; color:#fff;">FREE SHIPPING</h4>
+                                    <h1 class="intro-title" style="font-size:42px; font-weight:700; margin:10px 0 20px; color:#fff;">On Orders Over Rs. 5000</h1>
+                                    <a href="products.php" class="btn btn-primary btn-round">
+                                        <span>Shop Now</span>
+                                        <i class="icon-long-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- End .intro-slider -->
+
                 </div>
             </div>
         </div>
-    </div>
+    </div><!-- End .intro-section -->
 
-<!-- SHOP BY CATEGORY -->
+
+    <!-- ==========================================
+         SHOP BY CATEGORY
+         ========================================== -->
 
     <div class="container mt-6 mb-6">
 
@@ -76,8 +134,14 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <div class="col-6 col-md-4 col-lg-2 mb-4">
                         <a href="products.php?category=<?= (int) $category['id'] ?>" class="d-block text-center" style="text-decoration:none;">
-                            <div style="background:#f4f4f4; border-radius:4px; padding:30px 10px; transition:.3s;">
-                                <i class="icon-tag" style="font-size:28px; color:#337ab7;"></i>
+                            <div style="background:#f4f4f4; border-radius:4px; padding:15px; transition:.3s;">
+                                <?php if (!empty($category['image'])): ?>
+                                    <img src="uploads/categories/<?= htmlspecialchars($category['image']) ?>" alt="<?= htmlspecialchars($category['name']) ?>" style="width:100%; height:90px; object-fit:cover; border-radius:4px;">
+                                <?php else: ?>
+                                    <div style="height:90px; display:flex; align-items:center; justify-content:center;">
+                                        <i class="icon-tag" style="font-size:28px; color:#337ab7;"></i>
+                                    </div>
+                                <?php endif; ?>
                                 <h6 class="mt-2 mb-0" style="color:#222;">
                                     <?= htmlspecialchars($category['name']) ?>
                                 </h6>
@@ -96,10 +160,12 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
         </div>
-    </div>
+    </div><!-- End Shop by Category -->
 
 
-    <!-- FEATURED PRODUCTS -->
+    <!-- ==========================================
+         FEATURED PRODUCTS
+         ========================================== -->
 
     <div class="container mb-6">
 
@@ -154,9 +220,9 @@ require_once __DIR__ . '/../includes/header.php';
                                                 <span>view details</span>
                                             </a>
                                         <?php endif; ?>
-                                    </div>
+                                    </div><!-- End .product-action -->
 
-                                </figure>
+                                </figure><!-- End .product-media -->
 
                                 <div class="product-body">
                                     <div class="product-cat">
@@ -172,9 +238,9 @@ require_once __DIR__ . '/../includes/header.php';
                                     <div class="product-price">
                                         Rs. <?= number_format((float) $product['price'], 2) ?>
                                     </div>
-                                </div>
+                                </div><!-- End .product-body -->
 
-                            </div>
+                            </div><!-- End .product -->
                         </div>
 
                     <?php endwhile; ?>
@@ -187,20 +253,25 @@ require_once __DIR__ . '/../includes/header.php';
 
                 <?php endif; ?>
 
-            </div>
-        </div>
-    </div>
+            </div><!-- End .row -->
+        </div><!-- End .products -->
+    </div><!-- End Featured Products -->
 
 
- 
+    <!-- ==========================================
+         CALL TO ACTION
+         ========================================== -->
 
     <div class="container mb-6">
         <div class="row">
             <div class="col-12">
-                <div style="background:#222; border-radius:4px; padding:50px; text-align:center; color:#fff;">
-                    <h3 class="mb-2" style="color:#fff;">Free Shipping on Orders Over Rs. 5000</h3>
-                    <p class="mb-3" style="color:#ccc;">Quality products delivered right to your door.</p>
-                    <a href="products.php" class="btn btn-outline-primary-2"><span>Shop Now</span><i class="icon-long-arrow-right"></i></a>
+                <div style="background-image:url('assets/images/backgrounds/cta/bg-2.jpg'); background-size:cover; background-position:center; border-radius:4px; padding:60px 20px; text-align:center; position:relative;">
+                    <div style="background:rgba(0,0,0,0.55); position:absolute; inset:0; border-radius:4px;"></div>
+                    <div style="position:relative; z-index:1;">
+                        <h3 class="mb-2" style="color:#fff;">Free Shipping on Orders Over Rs. 5000</h3>
+                        <p class="mb-3" style="color:#eee;">Quality products delivered right to your door.</p>
+                        <a href="products.php" class="btn btn-primary"><span>Shop Now</span><i class="icon-long-arrow-right"></i></a>
+                    </div>
                 </div>
             </div>
         </div>

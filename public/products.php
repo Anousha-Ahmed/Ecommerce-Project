@@ -88,16 +88,31 @@ $pageTitle = 'Shop - Store';
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-   <!-- PAGE HEADER -->
+    <!-- PAGE HEADER -->
 
-    <div class="page-header text-center" style="background-color:#f4f4f4; padding:40px 0;">
-        <div class="container">
-            <h1 class="page-title">
+    <div class="page-header text-center" style="background-image:url('assets/images/page-header-bg.jpg'); background-size:cover; background-position:center; padding:70px 0; position:relative;">
+        <div style="background:rgba(0,0,0,0.45); position:absolute; inset:0;"></div>
+        <div class="container" style="position:relative; z-index:1;">
+            <h1 class="page-title text-white" style="margin-bottom:0;">
                 Shop
-                <span>Browse all products</span>
+                <span class="text-white" style="display:block; font-size:16px; margin-top:8px; font-weight:400;">Browse all products</span>
             </h1>
         </div>
     </div>
+
+    <!-- This fixes different-sized product images: every product image is
+         cropped to the same square shape, so the grid always looks even. -->
+    <style>
+        .product-media {
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+        }
+        .product-media .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
 
     <nav aria-label="breadcrumb" class="breadcrumb-nav mb-2">
         <div class="container">
@@ -253,7 +268,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                 </div>
 
-            </div>=
+            </div>
         </div>
     </div>
 

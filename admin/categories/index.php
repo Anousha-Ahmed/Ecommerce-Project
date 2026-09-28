@@ -13,6 +13,7 @@ $database = new Database();
 $mysqli = $database->getConnection();
 
 $successMessage = Session::getFlash('success');
+$errorMessage = Session::getFlash('error');
 
 // Fetch all categories from the database.
 $stmt = $mysqli->prepare(
@@ -34,6 +35,12 @@ require_once __DIR__ . '/../../includes/admin-header.php';
     <?php if ($successMessage): ?>
         <div class="alert alert-success text-white">
             <?= htmlspecialchars($successMessage) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($errorMessage): ?>
+        <div class="alert alert-danger text-white">
+            <?= htmlspecialchars($errorMessage) ?>
         </div>
     <?php endif; ?>
 
@@ -102,11 +109,7 @@ require_once __DIR__ . '/../../includes/admin-header.php';
                                             </td>
 
                                             <td class="text-end pe-4">
-                                                <a href="edit.php?id=<?= (int) $category['id'] ?>" class="text-secondary font-weight-bold text-xs me-3" title="Edit"><i class="material-symbols-rounded text-sm align-middle">edit</i></a>
-                                                <form method="POST" action="delete.php" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this category?');">
-                                                    <input type="hidden" name="id" value="<?= (int) $category['id'] ?>">
-                                                    <button type="submit" class="btn btn-link text-danger p-0 m-0" title="Delete" style="border:none; background:none;"><i class="material-symbols-rounded text-sm align-middle">delete</i></button>
-                                                </form>
+                                                <a href="edit.php?id=<?= (int) $category['id'] ?>" class="text-secondary font-weight-bold text-xs" title="Edit"><i class="material-symbols-rounded text-sm align-middle">edit</i></a>
                                             </td>
                                         </tr>
 
