@@ -1,0 +1,7 @@
+# Real Stripe test keys, never commit this file
+config/stripe.php
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/

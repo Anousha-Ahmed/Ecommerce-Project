@@ -211,11 +211,12 @@ $pageTitle = 'Shopping Cart - Store';
 require_once __DIR__ . '/../includes/header.php';
 ?>
 <!-- PAGE HEADER -->
-    <div class="page-header text-center" style="background-color:#f4f4f4; padding:40px 0;">
-        <div class="container">
-            <h1 class="page-title">
+    <div class="page-header text-center" style="background-image:url('assets/images/backgrounds/bg-4.jpg'); background-size:cover; background-position:center; padding:150px 0; position:relative;">
+    <div style="background:rgba(0,0,0,0.45); position:absolute; inset:0;"></div>
+       <div class="container" style="position:relative; z-index:1;">
+            <h1 class="page-title text-white">
                 Shopping Cart
-                <span>Shop</span>
+                <!-- <span>Shop</span> -->
             </h1>
         </div>
     </div>

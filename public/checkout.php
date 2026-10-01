@@ -3,16 +3,23 @@
 require_once __DIR__ . '/../core/Session.php';
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/Auth.php';
+require_once __DIR__ . '/../includes/order-functions.php';
+
 
 // Start session.
 Session::start();
 
+
+// ======================================================
 // AUTHENTICATION
+// ======================================================
 
 $auth = new Auth();
 
+
 // Customer must be logged in.
 if (!$auth->isLoggedIn()) {
+
     Session::flash(
         'error',
         'Please login before checkout.'
@@ -22,17 +29,24 @@ if (!$auth->isLoggedIn()) {
     exit;
 }
 
+
+// ======================================================
 // DATABASE
+// ======================================================
 
 $database = new Database();
 $mysqli = $database->getConnection();
 
+
+// ======================================================
 // CHECK CART
+// ======================================================
 
 if (
     !isset($_SESSION['cart']) ||
     empty($_SESSION['cart'])
 ) {
+
     Session::flash(
         'error',
         'Your cart is empty.'
@@ -42,11 +56,17 @@ if (
     exit;
 }
 
-$error = '';
 
+// Show an error coming back from stripe-return.php (if any).
+$error = Session::getFlash('error') ?? '';
+
+
+// ======================================================
 // CHECKOUT FORM
+// ======================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     // Get shipping address.
     $shippingAddress =
         trim($_POST['shipping_address'] ?? '');
@@ -55,263 +75,160 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paymentMethod =
         $_POST['payment_method'] ?? '';
 
+
+    // ----------------------------------------------
     // VALIDATION
+    // ----------------------------------------------
 
     if ($shippingAddress === '') {
+
         $error = 'Shipping address is required.';
+
     } elseif (
         !in_array(
             $paymentMethod,
-            ['cod', 'paypal'],
+            ['cod', 'stripe'],
             true
         )
     ) {
+
         $error = 'Please choose a payment method.';
     }
 
-    // CREATE ORDER
 
     if ($error === '') {
+
         try {
-            /*
-             * START TRANSACTION
-             *
-             * Order creation involves multiple queries.
-             * We want all of them to succeed together.
-             */
-            $mysqli->begin_transaction();
+
+            // ==========================================
+            // VALIDATE CART + STOCK
+            //
+            // Same check is needed for both COD and
+            // Stripe, so it happens before we branch.
+            // ==========================================
 
             $cartItems = [];
-
             $totalAmount = 0;
 
-            // CHECK PRODUCTS + STOCK
-
             foreach ($_SESSION['cart'] as $productId => $quantity) {
+
                 $productId = (int) $productId;
                 $quantity = (int) $quantity;
 
                 if ($productId <= 0 || $quantity <= 0) {
-                    throw new Exception(
-                        'Invalid cart item.'
-                    );
+                    throw new Exception('Invalid cart item.');
                 }
 
-                /*
-                 * FOR UPDATE locks the selected product row
-                 * during this transaction.
-                 *
-                 * This helps prevent two checkout processes
-                 * from incorrectly using the same stock.
-                 */
                 $stmt = $mysqli->prepare(
-                    'SELECT id, name, price, stock
+                    "SELECT id, name, price, stock
                      FROM products
-                     WHERE id = ? AND status = 1
-                     FOR UPDATE'
+                     WHERE id = ? AND status = 1"
                 );
 
-                $stmt->bind_param(
-                    'i',
-                    $productId
-                );
-
+                $stmt->bind_param("i", $productId);
                 $stmt->execute();
 
                 $result = $stmt->get_result();
 
                 if ($result->num_rows !== 1) {
                     $stmt->close();
-
-                    throw new Exception(
-                        'One of the products is no longer available.'
-                    );
+                    throw new Exception('One of the products is no longer available.');
                 }
 
                 $product = $result->fetch_assoc();
-
                 $stmt->close();
 
-                // Check available stock.
-                if (
-                    (int) $product['stock'] <
-                    $quantity
-                ) {
-                    throw new Exception(
-                        'Not enough stock for: '
-                        . $product['name']
-                    );
+                if ((int) $product['stock'] < $quantity) {
+                    throw new Exception('Not enough stock for: ' . $product['name']);
                 }
 
-                // Calculate item subtotal.
-                $subtotal =
-                    (float) $product['price']
-                    * $quantity;
-
+                $subtotal = (float) $product['price'] * $quantity;
                 $totalAmount += $subtotal;
 
-                // Store validated item for later insertion.
                 $cartItems[] = [
                     'product_id' => $productId,
-                    'name' => $product['name'],
-                    'quantity' => $quantity,
+                    'name'       => $product['name'],
+                    'quantity'   => $quantity,
                     'unit_price' => (float) $product['price'],
-                    'subtotal' => $subtotal
+                    'subtotal'   => $subtotal,
                 ];
             }
 
-            // GENERATE ORDER NUMBER
 
-            $orderNumber =
-                'ORD-'
-                . date('YmdHis')
-                . '-'
-                . random_int(100, 999);
+            // ==========================================
+            // COD -> place the order immediately
+            // ==========================================
 
-            // Current logged-in user's ID.
-            $userId = $auth->userId();
+            if ($paymentMethod === 'cod') {
 
-            // INSERT ORDER
-
-            $stmt = $mysqli->prepare(
-                "INSERT INTO orders
-                (
-                    user_id,
-                    order_number,
-                    total_amount,
-                    payment_method,
-                    payment_status,
-                    order_status,
-                    shipping_address
-                )
-                VALUES (?, ?, ?, ?, 'pending', 'processing', ?)"
-            );
-
-            $stmt->bind_param(
-                'isdss',
-                $userId,
-                $orderNumber,
-                $totalAmount,
-                $paymentMethod,
-                $shippingAddress
-            );
-
-            if (!$stmt->execute()) {
-                $stmt->close();
-
-                throw new Exception(
-                    'Failed to create order.'
+                $orderId = placeOrder(
+                    $mysqli,
+                    $auth->userId(),
+                    $cartItems,
+                    $totalAmount,
+                    $shippingAddress,
+                    'cod',
+                    'pending'
                 );
+
+                $_SESSION['cart'] = [];
+
+                Session::flash('success', 'Order placed successfully.');
+
+                header('Location: order-confirmation.php?id=' . $orderId);
+                exit;
             }
 
-            // Get newly created order ID.
-            $orderId = $stmt->insert_id;
 
-            $stmt->close();
+            // ==========================================
+            // STRIPE -> send customer to Stripe Checkout
+            // ==========================================
 
-            // INSERT ORDER ITEMS
+            if ($paymentMethod === 'stripe') {
 
-            foreach ($cartItems as $item) {
-                $stmt = $mysqli->prepare(
-                    'INSERT INTO order_items
-                    (
-                        order_id,
-                        product_id,
-                        quantity,
-                        unit_price,
-                        subtotal
-                    )
-                    VALUES (?, ?, ?, ?, ?)'
+                require_once __DIR__ . '/../core/Stripe.php';
+
+                // Save everything needed to finish the
+                // order once Stripe confirms the payment.
+                Session::set('stripe_pending_order', [
+                    'user_id'          => $auth->userId(),
+                    'cart_items'       => $cartItems,
+                    'total_amount'     => $totalAmount,
+                    'shipping_address' => $shippingAddress,
+                ]);
+
+                $protocol = isset($_SERVER['HTTPS']) ? 'https://' : 'http://';
+                $baseUrl  = $protocol . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
+
+                $stripe = new Stripe();
+
+                $checkoutSession = $stripe->createCheckoutSession(
+                    $cartItems,
+                    $baseUrl . '/stripe-return.php',
+                    $baseUrl . '/stripe-cancel.php'
                 );
 
-                $stmt->bind_param(
-                    'iiidd',
-                    $orderId,
-                    $item['product_id'],
-                    $item['quantity'],
-                    $item['unit_price'],
-                    $item['subtotal']
-                );
-
-                if (!$stmt->execute()) {
-                    $stmt->close();
-
-                    throw new Exception(
-                        'Failed to create order items.'
-                    );
-                }
-
-                $stmt->close();
-
-                // REDUCE PRODUCT STOCK
-
-                $stmt = $mysqli->prepare(
-                    'UPDATE products
-                     SET stock = stock - ?
-                     WHERE id = ?'
-                );
-
-                $stmt->bind_param(
-                    'ii',
-                    $item['quantity'],
-                    $item['product_id']
-                );
-
-                if (!$stmt->execute()) {
-                    $stmt->close();
-
-                    throw new Exception(
-                        'Failed to update product stock.'
-                    );
-                }
-
-                $stmt->close();
+                header('Location: ' . $checkoutSession['url']);
+                exit;
             }
 
-            // COMMIT TRANSACTION
-
-            $mysqli->commit();
-
-            // CLEAR CART
-
-            /*
-             * Order successfully created,
-             * so customer's cart is now empty.
-             */
-            $_SESSION['cart'] = [];
-
-            Session::flash(
-                'success',
-                'Order placed successfully.'
-            );
-
-            header(
-                'Location: order-confirmation.php?id='
-                . $orderId
-            );
-
-            exit;
         } catch (Throwable $e) {
-            /*
-             * Something went wrong.
-             *
-             * Rollback cancels all database changes
-             * made during this transaction.
-             */
-            $mysqli->rollback();
 
-            $error =
-                $e->getMessage();
+            $error = $e->getMessage();
         }
     }
 }
 
+
+// ======================================================
 // FETCH CART PRODUCTS FOR ORDER SUMMARY
+// ======================================================
 
 $cartProducts = [];
 $cartTotal = 0;
 
 foreach ($_SESSION['cart'] as $productId => $quantity) {
+
     $productId = (int) $productId;
     $quantity = (int) $quantity;
 
@@ -320,18 +237,19 @@ foreach ($_SESSION['cart'] as $productId => $quantity) {
     }
 
     $stmt = $mysqli->prepare(
-        'SELECT id, name, price
+        "SELECT id, name, price
          FROM products
          WHERE id = ?
            AND status = 1
-         LIMIT 1'
+         LIMIT 1"
     );
 
-    $stmt->bind_param('i', $productId);
+    $stmt->bind_param("i", $productId);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows === 1) {
+
         $product = $result->fetch_assoc();
 
         $subtotal = (float) $product['price'] * $quantity;
@@ -347,12 +265,15 @@ foreach ($_SESSION['cart'] as $productId => $quantity) {
     $stmt->close();
 }
 
+
 $pageTitle = 'Checkout - Store';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-   <!-- Page Header -->
+    <!-- ==========================================
+         PAGE HEADER
+         ========================================== -->
 
     <div class="page-header text-center" style="background-color:#f4f4f4; padding:40px 0;">
         <div class="container">
@@ -361,7 +282,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <span>Shop</span>
             </h1>
         </div>
-    </div>
+    </div><!-- End .page-header -->
 
     <nav aria-label="breadcrumb" class="breadcrumb-nav mb-2">
         <div class="container">
@@ -371,7 +292,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <li class="breadcrumb-item active" aria-current="page">Checkout</li>
             </ol>
         </div>
-    </nav>
+    </nav><!-- End .breadcrumb-nav -->
 
     <div class="page-content">
         <div class="checkout">
@@ -386,9 +307,9 @@ require_once __DIR__ . '/../includes/header.php';
                 <form method="POST" action="checkout.php">
                     <div class="row">
 
-                        
+                        <!-- ==========================================
                              SHIPPING DETAILS
-                            
+                             ========================================== -->
 
                         <div class="col-lg-9">
                             <h2 class="checkout-title">Shipping Details</h2>
@@ -412,14 +333,17 @@ require_once __DIR__ . '/../includes/header.php';
                             </div>
 
                             <div class="custom-control custom-radio mt-2">
-                                <input type="radio" id="pay-paypal" name="payment_method" value="paypal" class="custom-control-input" <?= $selectedPayment === 'paypal' ? 'checked' : '' ?> required>
-                                <label class="custom-control-label" for="pay-paypal">PayPal</label>
+                                <input type="radio" id="pay-stripe" name="payment_method" value="stripe" class="custom-control-input" <?= $selectedPayment === 'stripe' ? 'checked' : '' ?> required>
+                                <label class="custom-control-label" for="pay-stripe">
+                                    Credit / Debit Card (Stripe)
+                                </label>
                             </div>
-                        </div>
+                        </div><!-- End .col-lg-9 -->
 
 
-                             <!-- ORDER SUMMARY -->
-                        
+                        <!-- ==========================================
+                             ORDER SUMMARY
+                             ========================================== -->
 
                         <aside class="col-lg-3">
                             <div class="summary">
@@ -463,18 +387,18 @@ require_once __DIR__ . '/../includes/header.php';
                                 <button type="submit" class="btn btn-outline-primary-2 btn-order btn-block">
                                     <span class="btn-text">Place Order</span>
                                 </button>
-                            </div>\
+                            </div><!-- End .summary -->
 
                             <a href="cart.php" class="btn btn-outline-dark-2 btn-block mt-3">
                                 <span>BACK TO CART</span>
                             </a>
-                        </aside>
+                        </aside><!-- End .col-lg-3 -->
 
-                    </div>
+                    </div><!-- End .row -->
                 </form>
 
-            </div>
-        </div>
-    </div>
+            </div><!-- End .container -->
+        </div><!-- End .checkout -->
+    </div><!-- End .page-content -->
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

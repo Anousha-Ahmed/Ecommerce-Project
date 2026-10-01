@@ -92,7 +92,8 @@ $stmt = $mysqli->prepare(
         oi.quantity,
         oi.unit_price,
         oi.subtotal,
-        p.name AS product_name
+        p.name AS product_name,
+        p.image AS product_image
      FROM order_items AS oi
      INNER JOIN products AS p
         ON oi.product_id = p.id
@@ -111,306 +112,140 @@ $itemsResult = $stmt->get_result();
 
 $stmt->close();
 
+
+// Pick a badge color depending on the status.
+$paymentBadge = 'secondary';
+if ($order['payment_status'] === 'paid') { $paymentBadge = 'success'; }
+elseif ($order['payment_status'] === 'failed') { $paymentBadge = 'danger'; }
+
+$orderBadge = 'secondary';
+if ($order['order_status'] === 'delivered') { $orderBadge = 'success'; }
+elseif ($order['order_status'] === 'shipped') { $orderBadge = 'info'; }
+elseif ($order['order_status'] === 'cancelled') { $orderBadge = 'danger'; }
+elseif ($order['order_status'] === 'processing') { $orderBadge = 'warning'; }
+
+
+$pageTitle = 'Order Confirmation - Store';
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Order Confirmation
-    </title>
-
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-</head>
-
-
-<body>
-
-
-<div class="container py-5">
-
-
-
-    <div class="alert alert-success">
-
-        <h4 class="alert-heading">
-            Order Placed Successfully! 🎉
-        </h4>
-
-        <p class="mb-0">
-
-            Thank you for your order.
-
-        </p>
-
-    </div>
-
-
- 
-         <!-- ORDER INFORMATION -->
-        
-
-    <div class="card shadow-sm mb-4">
-
-        <div class="card-body">
-
-            <h4 class="mb-3">
-                Order Information
-            </h4>
-
-
-            <p>
-
-                <strong>
-                    Order Number:
-                </strong>
-
-                <?= htmlspecialchars(
-                    $order['order_number']
-                ) ?>
-
-            </p>
-
-
-            <p>
-
-                <strong>
-                    Payment Method:
-                </strong>
-
-                <?= htmlspecialchars(
-                    strtoupper(
-                        $order['payment_method']
-                    )
-                ) ?>
-
-            </p>
-
-
-            <p>
-
-                <strong>
-                    Payment Status:
-                </strong>
-
-                <?= htmlspecialchars(
-                    ucfirst(
-                        $order['payment_status']
-                    )
-                ) ?>
-
-            </p>
-
-
-            <p>
-
-                <strong>
-                    Order Status:
-                </strong>
-
-                <?= htmlspecialchars(
-                    ucfirst(
-                        $order['order_status']
-                    )
-                ) ?>
-
-            </p>
-
-
-            <p>
-
-                <strong>
-                    Shipping Address:
-                </strong>
-
-                <br>
-
-                <?= nl2br(
-                    htmlspecialchars(
-                        $order['shipping_address']
-                    )
-                ) ?>
-
-            </p>
-
-
-            <p class="mb-0">
-
-                <strong>
-                    Order Date:
-                </strong>
-
-                <?= htmlspecialchars(
-                    $order['created_at']
-                ) ?>
-
-            </p>
-
+    <nav aria-label="breadcrumb" class="breadcrumb-nav border-0 mb-0">
+        <div class="container">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.php">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Order Confirmation</li>
+            </ol>
         </div>
+    </nav>
 
-    </div>
+    <div class="page-content pb-6">
+        <div class="container">
 
-<!-- 
-   ORDER ITEMS -->
+            <!-- SUCCESS MESSAGE -->
 
-    <div class="card shadow-sm">
+            <div class="text-center py-4">
+                <i class="icon-check-circle" style="font-size:60px; color:#28a745;"></i>
+                <h2 class="mt-3 mb-1">Order Placed Successfully!</h2>
+                <p class="text-muted">Thank you for your order. A confirmation has been saved to your account.</p>
+            </div>
 
-        <div class="card-body">
+            <div class="row">
 
-            <h4 class="mb-3">
-                Order Items
-            </h4>
+                <!-- ORDER ITEMS -->
 
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <h5 class="mb-3">Order Items</h5>
 
-            <div class="table-responsive">
+                            <table class="table table-cart table-mobile">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Qty</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
 
-                <table class="table table-bordered">
+                                    <?php while ($item = $itemsResult->fetch_assoc()): ?>
 
-                    <thead>
+                                        <tr>
+                                            <td class="product-col">
+                                                <div class="product">
+                                                    <figure class="product-media" style="width:60px; height:60px;">
+                                                        <?php if (!empty($item['product_image'])): ?>
+                                                            <img src="uploads/products/<?= htmlspecialchars($item['product_image']) ?>" alt="<?= htmlspecialchars($item['product_name']) ?>" style="width:100%; height:100%; object-fit:cover;">
+                                                        <?php else: ?>
+                                                            <img src="assets/images/products/product-1.jpg" alt="<?= htmlspecialchars($item['product_name']) ?>" style="width:100%; height:100%; object-fit:cover;">
+                                                        <?php endif; ?>
+                                                    </figure>
+                                                    <h3 class="product-title" style="font-size:14px;"><?= htmlspecialchars($item['product_name']) ?></h3>
+                                                </div>
+                                            </td>
+                                            <td>Rs. <?= number_format((float) $item['unit_price'], 2) ?></td>
+                                            <td><?= (int) $item['quantity'] ?></td>
+                                            <td>Rs. <?= number_format((float) $item['subtotal'], 2) ?></td>
+                                        </tr>
 
-                        <tr>
+                                    <?php endwhile; ?>
 
-                            <th>
-                                Product
-                            </th>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Total</strong></td>
+                                        <td><strong>Rs. <?= number_format((float) $order['total_amount'], 2) ?></strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
 
-                            <th>
-                                Unit Price
-                            </th>
-
-                            <th>
-                                Quantity
-                            </th>
-
-                            <th>
-                                Subtotal
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-
-                    <?php while (
-                        $item = $itemsResult->fetch_assoc()
-                    ): ?>
-
-                        <tr>
-
-                            <td>
-
-                                <?= htmlspecialchars(
-                                    $item['product_name']
-                                ) ?>
-
-                            </td>
-
-
-                            <td>
-
-                                Rs.
-                                <?= number_format(
-                                    (float) $item['unit_price'],
-                                    2
-                                ) ?>
-
-                            </td>
-
-
-                            <td>
-
-                                <?= (int) $item['quantity'] ?>
-
-                            </td>
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <h5 class="mb-2">Shipping Address</h5>
+                            <p class="mb-0"><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></p>
+                        </div>
+                    </div>
+                </div>
 
 
-                            <td>
+                <!-- ORDER INFO -->
 
-                                Rs.
-                                <?= number_format(
-                                    (float) $item['subtotal'],
-                                    2
-                                ) ?>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <h5 class="mb-3">Order Information</h5>
 
-                            </td>
+                            <p class="mb-2"><strong>Order Number:</strong><br><?= htmlspecialchars($order['order_number']) ?></p>
 
-                        </tr>
+                            <p class="mb-2"><strong>Payment Method:</strong><br><?= htmlspecialchars(strtoupper($order['payment_method'])) ?></p>
 
-                    <?php endwhile; ?>
+                            <p class="mb-2">
+                                <strong>Payment Status:</strong><br>
+                                <span class="badge badge-<?= $paymentBadge ?>" style="padding:5px 10px;"><?= htmlspecialchars(ucfirst($order['payment_status'])) ?></span>
+                            </p>
 
+                            <p class="mb-2">
+                                <strong>Order Status:</strong><br>
+                                <span class="badge badge-<?= $orderBadge ?>" style="padding:5px 10px;"><?= htmlspecialchars(ucfirst($order['order_status'])) ?></span>
+                            </p>
 
-                    </tbody>
+                            <p class="mb-0"><strong>Order Date:</strong><br><?= htmlspecialchars($order['created_at']) ?></p>
+                        </div>
+                    </div>
 
-
-                    <tfoot>
-
-                        <tr>
-
-                            <th
-                                colspan="3"
-                                class="text-end"
-                            >
-
-                                Total:
-
-                            </th>
-
-                            <th>
-
-                                Rs.
-                                <?= number_format(
-                                    (float) $order['total_amount'],
-                                    2
-                                ) ?>
-
-                            </th>
-
-                        </tr>
-
-                    </tfoot>
-
-                </table>
+                    <a href="products.php" class="btn btn-outline-primary-2 btn-block mt-3">
+                        <span>CONTINUE SHOPPING</span>
+                        <i class="icon-long-arrow-right"></i>
+                    </a>
+                </div>
 
             </div>
 
         </div>
-
     </div>
 
-
-
-    <div class="mt-4">
-
-        <a
-            href="products.php"
-            class="btn btn-primary"
-        >
-            Continue Shopping
-        </a>
-
-    </div>
-
-
-</div>
-
-
-</body>
-
-</html>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

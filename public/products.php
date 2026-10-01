@@ -90,12 +90,12 @@ require_once __DIR__ . '/../includes/header.php';
 
     <!-- PAGE HEADER -->
 
-    <div class="page-header text-center" style="background-image:url('assets/images/page-header-bg.jpg'); background-size:cover; background-position:center; padding:70px 0; position:relative;">
+    <div class="page-header text-center" style="background-image:url('assets/images/backgrounds/bg-1.jpg'); background-size:cover; background-position:center; padding:150px 0; position:relative;">
         <div style="background:rgba(0,0,0,0.45); position:absolute; inset:0;"></div>
         <div class="container" style="position:relative; z-index:1;">
             <h1 class="page-title text-white" style="margin-bottom:0;">
-                Shop
-                <span class="text-white" style="display:block; font-size:16px; margin-top:8px; font-weight:400;">Browse all products</span>
+                Our Collection
+                <span class="text-white" style="display:block; font-size:16px; margin-top:8px; font-weight:400;">Discover what we have for you</span>
             </h1>
         </div>
     </div>
@@ -159,6 +159,16 @@ require_once __DIR__ . '/../includes/header.php';
 
                     </div>
                 </aside>
+
+                <style>
+                    @media (min-width: 992px) {
+                        .sidebar-shop {
+                            position: sticky;
+                            top: 20px;
+                            align-self: flex-start;
+                        }
+                    }
+                </style>
 
 
               <!-- PRODUCT GRID -->
